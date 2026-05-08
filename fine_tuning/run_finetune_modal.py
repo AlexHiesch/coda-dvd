@@ -1,7 +1,7 @@
 """
 Run vessel grounding fine-tuning on Modal H100.
 Standalone script that avoids Python 3.14 → 3.12 serialization issues
-by running leap-finetune as a subprocess inside the container.
+by passing the config as a YAML string to the remote function.
 """
 import pathlib
 
@@ -13,15 +13,6 @@ _LEAP_ROOT = _REPO_ROOT / "leap-finetune"
 
 VOLUME_NAME = "satellite-vlm"
 MOUNT_POINT = "/satellite-vlm"
-
-# Load config to embed in the image
-CONFIG_PATH = _REPO_ROOT / "fine_tuning" / "vessel_grounding_modal.yaml"
-with open(CONFIG_PATH) as f:
-    config_dict = yaml.safe_load(f)
-
-# Strip modal section for in-container use
-train_config = {k: v for k, v in config_dict.items() if k != "modal"}
-train_config.setdefault("training_config", {})["output_dir"] = MOUNT_POINT
 
 app = modal.App("coda-dvd-finetune")
 volume = modal.Volume.from_name(VOLUME_NAME, create_if_missing=True)
@@ -56,7 +47,6 @@ image = (
 )
 def train(config_yaml: str):
     import os
-    import subprocess
     import sys
     import tempfile
 
@@ -76,8 +66,17 @@ def train(config_yaml: str):
 
 @app.local_entrypoint()
 def main():
+    # Read config locally only
+    config_path = _REPO_ROOT / "fine_tuning" / "vessel_grounding_modal.yaml"
+    with open(config_path) as f:
+        config_dict = yaml.safe_load(f)
+
+    # Strip modal section, set output dir
+    train_config = {k: v for k, v in config_dict.items() if k != "modal"}
+    train_config.setdefault("training_config", {})["output_dir"] = MOUNT_POINT
+
     config_str = yaml.dump(train_config)
-    print(f"Launching fine-tuning on Modal H100...")
+    print("Launching fine-tuning on Modal H100...")
     print(f"  Model: {train_config.get('model_name')}")
     print(f"  Dataset: {train_config.get('dataset', {}).get('path')}")
     print(f"  Epochs: {train_config.get('training_config', {}).get('num_train_epochs')}")
