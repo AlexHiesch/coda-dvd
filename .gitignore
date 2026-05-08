@@ -11,3 +11,5 @@ data/
 *.egg-info/
 /test_sentinel.png
 /mapbox_usage_log.md
+fine_tuning/merged_model/
+fine_tuning/mlx_finetuned/

@@ -552,16 +552,26 @@ def run_pipeline():
     """Run the full CODA-DVD pipeline demonstration."""
     banner()
 
-    # Load VLM
+    # Load VLM (prefer fine-tuned model if available)
     header("LOADING ON-BOARD AI MODEL")
-    status("⏳", "Loading LFM2.5-VL-1.6B (Liquid AI)...", C.YELLOW)
-    t0 = time.time()
 
     from mlx_vlm import load
-    model, processor = load("mlx-community/LFM2.5-VL-1.6B-8bit")
+    from pathlib import Path
 
-    status("✓", f"Model loaded in {time.time()-t0:.1f}s | MLX Apple Silicon optimized", C.GREEN)
-    status("✓", "On-board compute: ~220 tok/s, 2.6GB RAM", C.GREEN)
+    finetuned_path = Path(__file__).parent / "fine_tuning" / "mlx_finetuned"
+    if finetuned_path.exists():
+        status("⏳", "Loading fine-tuned LFM2.5-VL (VRSBench grounding)...", C.YELLOW)
+        t0 = time.time()
+        model, processor = load(str(finetuned_path))
+        status("✓", f"Fine-tuned model loaded in {time.time()-t0:.1f}s", C.GREEN)
+        status("✓", "Trained on VRSBench grounding (LoRA r=16, 3 epochs)", C.GREEN)
+    else:
+        status("⏳", "Loading LFM2.5-VL-1.6B base model...", C.YELLOW)
+        t0 = time.time()
+        model, processor = load("mlx-community/LFM2.5-VL-1.6B-8bit")
+        status("✓", f"Base model loaded in {time.time()-t0:.1f}s", C.GREEN)
+
+    status("✓", "MLX Apple Silicon optimized | ~220 tok/s, 2.6GB RAM", C.GREEN)
 
     # Initialize components
     client = SimSatClient()
