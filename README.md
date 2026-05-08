@@ -5,6 +5,18 @@
 
 ---
 
+## Demo
+
+https://github.com/user-attachments/assets/placeholder
+
+▶ **[Watch the demo video](media/final/01_CompositeDemo.mp4)** — 44s walkthrough with voiceover and captions
+
+📐 **[Architecture diagram (Excalidraw)](coda_dvd_architecture.excalidraw)** — open in [excalidraw.com](https://excalidraw.com) to explore interactively
+
+![Architecture](media/renders/satellite-ai-filter-pipeline.png)
+
+---
+
 ## The Problem
 
 Earth Observation satellites generate **terabytes of data daily**, but downlink bandwidth is severely limited (often just minutes of ground station contact per orbit). Traditional approaches beam down full images for ground-based analysis — wasting 95%+ bandwidth on empty ocean, clouds, and irrelevant data.

@@ -1,0 +1,7 @@
+# Intermediate build artifacts
+media/slides/
+media/audio/
+media/renders/coda_dvd_demo_raw.mp4
+media/renders/coda_dvd_demo_composite.mp4
+media/final/_concat_list.txt
+.DS_Store

@@ -1,0 +1,27 @@
+1
+00:00:00,500 --> 00:00:06,188
+CODA-DVD. Dark Vessel Detection from orbit. Three-stage on-board AI pipeline.
+
+2
+00:00:08,500 --> 00:00:12,500
+Sentinel-2 at ten meters. Regions of interest in Hamburg.
+
+3
+00:00:13,500 --> 00:00:17,388
+Mapbox high-res. Vessels classified by the VLM.
+
+4
+00:00:18,500 --> 00:00:23,360
+Downlink: just fifteen kilobytes. Ninety-eight percent bandwidth saved.
+
+5
+00:00:25,500 --> 00:00:29,136
+Singapore anchorage. Real vessel targets at scale.
+
+6
+00:00:31,000 --> 00:00:34,384
+Live demo. Three passes processed on-board.
+
+7
+00:00:37,500 --> 00:00:40,308
+Vessel confirmed. Mission complete.
