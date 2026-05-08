@@ -573,20 +573,20 @@ def run_pipeline():
     # Test scenarios using historical Sentinel data
     scenarios = [
         {
-            "name": "North Atlantic (Cloudy)",
-            "lon": -20.0, "lat": 50.0,
-            "timestamp": "2026-01-15T10:00:00Z",
+            "name": "Singapore Strait (Cloudy Tropics)",
+            "lon": 103.85, "lat": 1.26,
+            "timestamp": "2026-01-10T10:00:00Z",
             "expected": "cloud_discard",
         },
         {
-            "name": "Open Pacific (Clear, No Vessels)",
-            "lon": -150.0, "lat": 10.0,
+            "name": "Open Atlantic (Clear, No Vessels)",
+            "lon": -30.0, "lat": 35.0,
             "timestamp": "2026-03-01T12:00:00Z",
             "expected": "no_anomaly",
         },
         {
-            "name": "English Channel (Shipping Lane)",
-            "lon": 1.3, "lat": 51.0,
+            "name": "Hamburg Port (Major Shipping Hub)",
+            "lon": 9.97, "lat": 53.53,
             "timestamp": "2026-03-10T10:00:00Z",
             "expected": "vessel_detected",
         },
