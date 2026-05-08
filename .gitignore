@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+/SimSat/
+/leap-finetune/
+/liquid-cookbook/
+outputs/
+data/
+*.egg-info/
+/test_sentinel.png
+/mapbox_usage_log.md

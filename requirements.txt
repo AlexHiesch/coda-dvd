@@ -1,0 +1,8 @@
+mlx-vlm>=0.4.0
+numpy
+Pillow
+requests
+huggingface_hub
+tqdm
+modal
+pyyaml
