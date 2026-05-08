@@ -120,7 +120,14 @@ export MAPBOX_ACCESS_TOKEN="your_token_here"
 # 3. Python environment
 python -m venv .venv && source .venv/bin/activate
 pip install mlx-vlm numpy Pillow requests
+
+# 4. Download fine-tuned model (optional but recommended)
+mkdir -p fine_tuning/mlx_finetuned
+wget https://github.com/AlexHiesch/coda-dvd/releases/download/v1.0/lfm25-vl-vessel-grounding-mlx.tar.gz
+tar xzf lfm25-vl-vessel-grounding-mlx.tar.gz -C fine_tuning/mlx_finetuned/
 ```
+
+The pipeline auto-detects the fine-tuned model. Without it, the base LFM2.5-VL is used as fallback.
 
 ### Run
 ```bash
@@ -128,9 +135,9 @@ python coda_dvd_pipeline.py
 ```
 
 The pipeline runs 3 test scenarios end-to-end:
-1. **North Atlantic** — Cloudy → discarded at Stage 1
-2. **Open Pacific** — Clear but no vessels → discarded at Stage 2
-3. **English Channel** — Busy shipping lane → vessel detected, classified, minimal downlink
+1. **Singapore Strait** — Cloudy (97.8%) → discarded at Stage 1
+2. **Open Atlantic** — No Sentinel coverage → skipped
+3. **Hamburg Port** — Clear, vessels detected → classified and downlinked
 
 ### Expected Output
 ```
