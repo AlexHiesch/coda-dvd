@@ -16,8 +16,6 @@ https://github.com/user-attachments/assets/placeholder
 
 ![Architecture overview](media/renders/satellite-ai-filter-pipeline.png)
 
-Interactive diagram: [coda_dvd_architecture.excalidraw](coda_dvd_architecture.excalidraw) (download and open at [excalidraw.com](https://excalidraw.com))
-
 Three stages, each discarding data that doesn't matter:
 
 | Stage | What it does | Bands used | Result |
