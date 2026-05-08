@@ -10,7 +10,7 @@ https://github.com/user-attachments/assets/placeholder
 
 44s walkthrough with voiceover: architecture overview, example detections, live pipeline run.
 
-[Download MP4](media/final/01_CompositeDemo.mp4) | [Subtitles (SRT)](media/final/01_CompositeDemo.srt)
+[Download MP4](media/final/01_CompositeDemo.mp4)
 
 ## Architecture
 
