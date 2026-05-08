@@ -61,6 +61,20 @@ Earth Observation satellites generate **terabytes of data daily**, but downlink 
 - Generates minimal **downlink packet**: 500B JSON metadata + 128×128 PNG crop
 - Graceful fallback to 4× bicubic upscale if high-res unavailable
 
+## Example Outputs
+
+### Stage 2: Sentinel-2 Image (Hamburg Port, 10m resolution)
+![Sentinel-2 Hamburg](examples/stage2_sentinel_hamburg.png)
+
+### Stage 3: Mapbox High-Res (Hamburg Port, ~0.5m resolution — ships clearly visible)
+![Mapbox Hamburg](examples/stage3_mapbox_hamburg.png)
+
+### Stage 3: Downlink Crop (128x128 — this is ALL that gets transmitted)
+![Downlink Crop](examples/stage3_downlink_crop_128x128.png)
+
+### Bonus: Singapore Anchorage (dozens of vessels visible in Mapbox)
+![Singapore](examples/mapbox_singapore_vessels.png)
+
 ## LFM2.5-VL Usage (Liquid Track)
 
 The model is used at **three critical decision points** — it's not just a captioner, it's the autonomous decision engine:
