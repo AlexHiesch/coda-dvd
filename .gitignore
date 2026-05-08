@@ -12,3 +12,4 @@ data/
 /test_sentinel.png
 /mapbox_usage_log.md
 fine_tuning/merged_model/
+scripts/generate_voiceover.py
