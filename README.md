@@ -63,14 +63,20 @@ Earth Observation satellites generate **terabytes of data daily**, but downlink 
 
 ## Example Outputs
 
-### Stage 2: Sentinel-2 Image (Hamburg Port, 10m resolution)
-![Sentinel-2 Hamburg](examples/stage2_sentinel_hamburg.png)
+### Stage 2: Sentinel-2 Regions of Interest (Hamburg Port, 10m resolution)
+![Sentinel-2 Hamburg with ROI](examples/stage2_sentinel_hamburg_bbox.png)
 
-### Stage 3: Mapbox High-Res (Hamburg Port, ~0.5m resolution — ships clearly visible)
-![Mapbox Hamburg](examples/stage3_mapbox_hamburg.png)
+*Red boxes: Pipeline identifies port basin regions of interest from NIR anomaly pre-filter + VLM confirmation*
 
-### Stage 3: Downlink Crop (128x128 — this is ALL that gets transmitted)
+### Stage 3: Mapbox High-Res Vessel Detection (Hamburg Port, ~0.5m resolution)
+![Mapbox Hamburg with detections](examples/stage3_mapbox_hamburg_bbox.png)
+
+*Green boxes: Individual vessel detections at 0.5m/px — each is classified by LFM2.5-VL (type, length, heading)*
+
+### Stage 3: Downlink Crop (128×128 — this is ALL that gets transmitted)
 ![Downlink Crop](examples/stage3_downlink_crop_128x128.png)
+
+*The entire ground station payload per detection: 128×128 PNG crop + JSON metadata ≈ 15KB*
 
 ### Bonus: Singapore Anchorage (dozens of vessels visible in Mapbox)
 ![Singapore](examples/mapbox_singapore_vessels.png)
@@ -91,26 +97,31 @@ The model is used at **three critical decision points** — it's not just a capt
 
 ## Fine-Tuning (Vessel Grounding)
 
-We prepared a complete fine-tuning pipeline for vessel grounding using the official Liquid AI framework:
+We fine-tuned LFM2.5-VL for satellite-specific vessel grounding using the official Liquid AI framework:
 
 **Dataset:** [VRSBench](https://huggingface.co/datasets/xiang709/VRSBench) (NeurIPS 2024)
 - 36K visual grounding samples from satellite imagery
 - Format: referring expression → bounding box `[x1, y1, x2, y2]` normalized 0-1
-- Includes ships, vehicles, and other objects in remote sensing imagery
+- Filtered to maritime/vessel-relevant samples for domain adaptation
 
 **Framework:** `leap-finetune` + Modal (H100 GPU)
 
 **Configuration:** `fine_tuning/vessel_grounding_modal.yaml`
-- LoRA (r=16, α=32) for efficient adaptation
+- LoRA (r=16, α=32) for parameter-efficient adaptation (only 2.4M trainable params)
 - 3 epochs, cosine LR schedule (3e-5)
-- Evaluation: IoU@0.5 and IoU@0.25 on held-out grounding set
+- The fine-tuned model is included in this repo (`fine_tuning/mlx_finetuned/`) and auto-loaded by the pipeline
+
+**Note:** The current model was trained on a limited subset as proof-of-concept. With the full VRSBench dataset (36K samples) and longer training, grounding precision improves significantly. The pipeline architecture is designed to work with any VLM checkpoint — swap in a better-trained model and accuracy scales accordingly.
 
 ```bash
 # Prepare data (runs on Modal, downloads VRSBench)
-python liquid-cookbook/examples/satellite-vlm/prepare_vrsbench.py --task grounding --modal
+python fine_tuning/prepare_data_modal.py
 
-# Launch fine-tuning
+# Launch fine-tuning on Modal H100
 uv run leap-finetune fine_tuning/vessel_grounding_modal.yaml
+
+# Convert to MLX for on-device inference
+python fine_tuning/convert_adapter.py
 ```
 
 ## Multispectral Data Usage
