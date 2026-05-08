@@ -11,7 +11,7 @@ Earth Observation satellites generate **terabytes of data daily**, but downlink 
 
 **Dark vessels** (ships operating without AIS transponders) are a critical maritime security challenge: illegal fishing, sanctions evasion, and trafficking. Detecting them requires processing vast ocean areas, but transmitting full imagery is infeasible.
 
-## Our Solution
+## The Solution
 
 **CODA-DVD** implements a **3-stage cascaded filter** running entirely on-board the satellite. Each stage progressively discards irrelevant data, so only tiny, confirmed anomaly packets reach the ground station.
 
@@ -97,7 +97,7 @@ The model is used at **three critical decision points** — it's not just a capt
 
 ## Fine-Tuning (Vessel Grounding)
 
-We fine-tuned LFM2.5-VL for satellite-specific vessel grounding using the official Liquid AI framework:
+I fine-tuned LFM2.5-VL for satellite-specific vessel grounding using the official Liquid AI framework:
 
 **Dataset:** [VRSBench](https://huggingface.co/datasets/xiang709/VRSBench) (NeurIPS 2024)
 - 36K visual grounding samples from satellite imagery
