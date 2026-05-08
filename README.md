@@ -1,241 +1,115 @@
 # CODA-DVD: Cascaded On-Board Attention for Dark Vessel Detection
 
-> **AI in Space Hackathon** — Liquid Track | Team: Alex Hiesch
-> A bandwidth-efficient on-board satellite AI pipeline using **LFM2.5-VL** for autonomous dark vessel detection.
+> AI in Space Hackathon | Liquid Track | Alex Hiesch
 
----
+On-board satellite AI pipeline using LFM2.5-VL. Filters 98%+ of downlink bandwidth by discarding clouds, empty ocean, and irrelevant data before transmission.
 
-## Demo
+## Demo Video
 
 https://github.com/user-attachments/assets/placeholder
 
-▶ **[Watch the demo video](media/final/01_CompositeDemo.mp4)** — 44s walkthrough with voiceover and captions
+44s walkthrough with voiceover: architecture overview, example detections, live pipeline run.
 
-📐 **[Architecture diagram (Excalidraw)](coda_dvd_architecture.excalidraw)** — open in [excalidraw.com](https://excalidraw.com) to explore interactively
+[Download MP4](media/final/01_CompositeDemo.mp4) | [Subtitles (SRT)](media/final/01_CompositeDemo.srt)
 
-![Architecture](media/renders/satellite-ai-filter-pipeline.png)
+## Architecture
 
----
+![Architecture overview](media/renders/satellite-ai-filter-pipeline.png)
 
-## The Problem
+[Open in Excalidraw](https://excalidraw.com/#json=) (interactive): [coda_dvd_architecture.excalidraw](coda_dvd_architecture.excalidraw)
 
-Earth Observation satellites generate **terabytes of data daily**, but downlink bandwidth is severely limited (often just minutes of ground station contact per orbit). Traditional approaches beam down full images for ground-based analysis — wasting 95%+ bandwidth on empty ocean, clouds, and irrelevant data.
+Three stages, each discarding data that doesn't matter:
 
-**Dark vessels** (ships operating without AIS transponders) are a critical maritime security challenge: illegal fishing, sanctions evasion, and trafficking. Detecting them requires processing vast ocean areas, but transmitting full imagery is infeasible.
-
-## The Solution
-
-**CODA-DVD** implements a **3-stage cascaded filter** running entirely on-board the satellite. Each stage progressively discards irrelevant data, so only tiny, confirmed anomaly packets reach the ground station.
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        CODA-DVD Pipeline                                │
-├──────────────────┬─────────────────────┬────────────────────────────────┤
-│    Stage 1       │      Stage 2        │         Stage 3                │
-│   CloudFilter    │  AnomalyDetector    │   SuperResolutionTrigger       │
-│                  │                     │                                │
-│  SCL band +      │  NIR threshold +    │   Mapbox high-res zoom +       │
-│  metadata check  │  LFM2.5-VL confirm  │   LFM2.5-VL classification     │
-│                  │                     │                                │
-│  ☁ >70% cloud?  │  No bright spots    │   128×128 crop + JSON metadata │
-│  → DISCARD       │  on dark ocean?     │   → TRANSMIT (15KB vs 2MB)     │
-│  (100% saved)    │  → DISCARD          │                                │
-│                  │  (100% saved)       │   98-99% bandwidth saved       │
-└──────────────────┴─────────────────────┴────────────────────────────────┘
-```
-
-### Bandwidth Impact
-
-| Scenario | Traditional | CODA-DVD | Savings |
-|----------|-------------|----------|---------|
-| Cloudy image | 820 KB transmitted | 0 bytes | **100%** |
-| Clear, no vessel | 820 KB transmitted | 0 bytes | **100%** |
-| Vessel detected | 820 KB transmitted | ~15 KB (JSON + crop) | **98.1%** |
-| High-res confirmation | 2 MB transmitted | ~22 KB | **99.1%** |
-
-## Architecture Deep-Dive
-
-### Stage 1: Cloud Filter
-- Uses **Scene Classification Layer (SCL)** from Sentinel-2 multispectral data
-- Counts cloud pixels (classes 8, 9) for sub-scene cloud detection
-- Cross-validates with API metadata cloud percentage
-- **Multispectral band usage:** `scl` band for pixel-level classification
-
-### Stage 2: Anomaly Detection (NIR + VLM)
-- **Phase 1 — Fast CV:** Near-Infrared (NIR) band thresholding. Ocean is dark (<30/255), vessels reflect brightly (>80/255). Connected component analysis finds candidate blobs.
-- **Phase 2 — VLM Confirmation:** Each candidate crop is fed to **LFM2.5-VL** with prompt: *"Is there a vessel in this satellite image crop?"*
-- Pixel-to-GPS coordinate conversion using Sentinel footprint metadata
-- **Multispectral band usage:** `nir` for contrast-based pre-filtering
-
-### Stage 3: Super Resolution + Classification
-- Fetches **Mapbox high-resolution imagery** (1280×1280 @ 0.5m/px) at anomaly GPS coordinates
-- **LFM2.5-VL** classifies: vessel type, estimated length, heading direction
-- Generates minimal **downlink packet**: 500B JSON metadata + 128×128 PNG crop
-- Graceful fallback to 4× bicubic upscale if high-res unavailable
+| Stage | What it does | Bands used | Result |
+|-------|-------------|------------|--------|
+| 1. CloudFilter | SCL band cloud pixel count + metadata check | SCL | >70% cloud: discard (100% saved) |
+| 2. AnomalyDetector | NIR thresholding + LFM2.5-VL confirmation | NIR, RGB | No vessel: discard (100% saved) |
+| 3. SuperResolution | Mapbox 0.5m/px fetch + VLM classification | RGB (hi-res) | 128x128 crop + JSON: transmit (~15KB vs 820KB) |
 
 ## Example Outputs
 
-### Stage 2: Sentinel-2 Regions of Interest (Hamburg Port, 10m resolution)
-![Sentinel-2 Hamburg with ROI](examples/stage2_sentinel_hamburg_bbox.png)
+**Stage 2: Sentinel-2 ROI detection (Hamburg, 10m)**
+![Sentinel ROI](examples/stage2_sentinel_hamburg_bbox.png)
+Red boxes: regions of interest from NIR pre-filter + VLM confirmation.
 
-*Red boxes: Pipeline identifies port basin regions of interest from NIR anomaly pre-filter + VLM confirmation*
+**Stage 3: Mapbox vessel detection (Hamburg, 0.5m)**
+![Mapbox detections](examples/stage3_mapbox_hamburg_bbox.png)
+Green boxes: individual vessels classified by LFM2.5-VL (type, length, heading).
 
-### Stage 3: Mapbox High-Res Vessel Detection (Hamburg Port, ~0.5m resolution)
-![Mapbox Hamburg with detections](examples/stage3_mapbox_hamburg_bbox.png)
+**Downlink crop (128x128, all that gets transmitted)**
+![Downlink crop](examples/stage3_downlink_crop_128x128.png)
 
-*Green boxes: Individual vessel detections at 0.5m/px — each is classified by LFM2.5-VL (type, length, heading)*
-
-### Stage 3: Downlink Crop (128×128 — this is ALL that gets transmitted)
-![Downlink Crop](examples/stage3_downlink_crop_128x128.png)
-
-*The entire ground station payload per detection: 128×128 PNG crop + JSON metadata ≈ 15KB*
-
-### Bonus: Singapore Anchorage (dozens of vessels visible in Mapbox)
+**Singapore anchorage (bonus)**
 ![Singapore](examples/mapbox_singapore_vessels.png)
 
-## LFM2.5-VL Usage (Liquid Track)
+## LFM2.5-VL Usage
 
-The model is used at **three critical decision points** — it's not just a captioner, it's the autonomous decision engine:
+The model makes three decisions in the pipeline:
 
-1. **Anomaly confirmation** (Stage 2): Reduces false positives from CV pre-filter
-2. **Vessel classification** (Stage 3): Adds intelligence to the downlink packet
-3. **Grounding format** output: `[{"label": "ship", "bbox": [x1,y1,x2,y2]}]` (0-1 normalized)
+1. **Anomaly confirmation** (Stage 2): filters CV false positives
+2. **Vessel classification** (Stage 3): type, length, heading
+3. **Grounding**: `[{"label": "ship", "bbox": [x1,y1,x2,y2]}]` (normalized 0-1)
 
-**Runtime characteristics** (Apple M3 Max simulating NVIDIA Orin 16GB):
-- Model: `mlx-community/LFM2.5-VL-1.6B-8bit`
-- Inference: ~220 tokens/sec
-- Memory: 2.6 GB
-- Suitable for edge deployment on space-grade hardware
+Runtime on Apple M3 Max (simulating Jetson Orin 16GB):
+- `mlx-community/LFM2.5-VL-1.6B-8bit`, 2.6 GB, ~220 tok/s
 
-## Fine-Tuning (Vessel Grounding)
+## Fine-Tuning
 
-I fine-tuned LFM2.5-VL for satellite-specific vessel grounding using the official Liquid AI framework:
+Fine-tuned LFM2.5-VL on [VRSBench](https://huggingface.co/datasets/xiang709/VRSBench) (NeurIPS 2024) for satellite vessel grounding.
 
-**Dataset:** [VRSBench](https://huggingface.co/datasets/xiang709/VRSBench) (NeurIPS 2024)
-- 36K visual grounding samples from satellite imagery
-- Format: referring expression → bounding box `[x1, y1, x2, y2]` normalized 0-1
-- Filtered to maritime/vessel-relevant samples for domain adaptation
-
-**Framework:** `leap-finetune` + Modal (H100 GPU)
-
-**Configuration:** `fine_tuning/vessel_grounding_modal.yaml`
-- LoRA (r=16, α=32) for parameter-efficient adaptation (only 2.4M trainable params)
-- 3 epochs, cosine LR schedule (3e-5)
-- The fine-tuned model is included in this repo (`fine_tuning/mlx_finetuned/`) and auto-loaded by the pipeline
-
-**Note:** The current model was trained on a limited subset as proof-of-concept. With the full VRSBench dataset (36K samples) and longer training, grounding precision improves significantly. The pipeline architecture is designed to work with any VLM checkpoint — swap in a better-trained model and accuracy scales accordingly.
+- LoRA r=16, alpha=32, 2.4M trainable params
+- 3 epochs on Modal H100, cosine LR 3e-5
+- Config: `fine_tuning/vessel_grounding_modal.yaml`
+- Trained on limited subset as proof-of-concept. Pipeline works with any VLM checkpoint.
 
 ```bash
-# Prepare data (runs on Modal, downloads VRSBench)
-python fine_tuning/prepare_data_modal.py
-
-# Launch fine-tuning on Modal H100
-uv run leap-finetune fine_tuning/vessel_grounding_modal.yaml
-
-# Convert to MLX for on-device inference
-python fine_tuning/convert_adapter.py
+python fine_tuning/prepare_data_modal.py        # download + format VRSBench
+uv run leap-finetune fine_tuning/vessel_grounding_modal.yaml  # train on Modal
+python fine_tuning/convert_adapter.py           # convert to MLX
 ```
 
-## Multispectral Data Usage
+## Running
 
-| Band | Purpose | Stage |
-|------|---------|-------|
-| Red, Green, Blue | Visual input for VLM | 2, 3 |
-| NIR (Near-Infrared) | Water/vessel contrast for CV pre-filter | 2 |
-| SCL (Scene Classification) | Cloud pixel classification | 1 |
-
-## Running the Demo
-
-### Prerequisites
 ```bash
-# 1. Start SimSat (provides Sentinel-2 + Mapbox API)
+# Start SimSat (Sentinel-2 + Mapbox API)
 cd SimSat && docker compose up -d
 
-# 2. Set Mapbox token (optional, enables Stage 3 high-res)
-export MAPBOX_ACCESS_TOKEN="your_token_here"
+# Optional: Mapbox high-res
+export MAPBOX_ACCESS_TOKEN="your_token"
 
-# 3. Python environment
+# Install + run
 python -m venv .venv && source .venv/bin/activate
 pip install mlx-vlm numpy Pillow requests
-
-# 4. Download fine-tuned model (optional but recommended)
-mkdir -p fine_tuning/mlx_finetuned
-wget https://github.com/AlexHiesch/coda-dvd/releases/download/v1.0/lfm25-vl-vessel-grounding-mlx.tar.gz
-tar xzf lfm25-vl-vessel-grounding-mlx.tar.gz -C fine_tuning/mlx_finetuned/
-```
-
-The pipeline auto-detects the fine-tuned model. Without it, the base LFM2.5-VL is used as fallback.
-
-### Run
-```bash
 python coda_dvd_pipeline.py
 ```
 
-The pipeline runs 3 test scenarios end-to-end:
-1. **Singapore Strait** — Cloudy (97.8%) → discarded at Stage 1
-2. **Open Atlantic** — No Sentinel coverage → skipped
-3. **Hamburg Port** — Clear, vessels detected → classified and downlinked
-
-### Expected Output
-```
-╔═══════════════════════════════════════════════════════════╗
-║   CODA-DVD: Cascaded On-Board Attention                  ║
-║   for Dark Vessel Detection                              ║
-╚═══════════════════════════════════════════════════════════╝
-
-[Stage 1] Cloud Filter
-  ☀ Clear sky: 0.0% cloud cover
-
-[Stage 2] Anomaly Detection (NIR + LFM2.5-VL)
-  ● 1 anomaly detected
-  🚢 Vessel at 51.0°N, 1.3°E [vlm]
-
-[Stage 3] High-Res Zoom + Classification
-  ✓ High-res acquired (mapbox)
-  🔍 Classification: cargo vessel, ~150m, heading W
-  📦 Downlink packet: 22,104 bytes (vs 820,000 original)
-  💾 Bandwidth saved: 97.3%
-
-MISSION SUMMARY
-  Total bandwidth saved: 99.1%
-```
+Three test scenarios run automatically:
+1. Singapore Strait: 97.8% clouds, discarded at Stage 1
+2. Open Atlantic: no Sentinel coverage, skipped
+3. Hamburg Port: clear sky, vessels detected, classified and downlinked
 
 ## Project Structure
 
 ```
-├── coda_dvd_pipeline.py              # Complete pipeline (single runnable file)
-├── fine_tuning/
-│   └── vessel_grounding_modal.yaml   # Fine-tuning config (LoRA, Modal H100)
-├── liquid-cookbook/                   # Liquid AI official cookbook (reference)
-│   └── examples/satellite-vlm/
-│       ├── prepare_vrsbench.py       # Data preparation script
-│       └── configs/                  # Reference configs
-├── leap-finetune/                    # Liquid AI fine-tuning framework
-├── SimSat/                           # DPhi Space satellite simulator (Docker)
-└── README.md
+coda_dvd_pipeline.py                  # Complete pipeline (single file)
+fine_tuning/
+  vessel_grounding_modal.yaml         # LoRA fine-tuning config
+  mlx_finetuned/                      # Fine-tuned model weights (MLX)
+examples/                             # Pipeline output images
+media/
+  final/01_CompositeDemo.mp4          # Demo video with voiceover
+  renders/satellite-ai-filter-pipeline.png  # Architecture illustration
+coda_dvd_architecture.excalidraw      # Interactive architecture diagram
+SimSat/                               # DPhi Space satellite simulator
+leap-finetune/                        # Liquid AI fine-tuning framework
 ```
 
-## Hardware Target
+## Technologies
 
-CODA-DVD is designed for the **NVIDIA Jetson Orin NX 16GB** (hackathon prize hardware):
-- LFM2.5-VL-1.6B-8bit: 2.6 GB model weight → fits comfortably
-- Inference: expected 100-200 tok/s on Orin (vs 220 tok/s on M3 Max)
-- Full pipeline: ~30s per observation pass including Sentinel fetch
-- Power budget: 15-25W — within CubeSat solar panel capacity
+- **LFM2.5-VL** (Liquid AI): on-board VLM
+- **SimSat** (DPhi Space): satellite simulator with real Sentinel-2 + Mapbox
+- **VRSBench**: remote sensing grounding benchmark
+- **MLX**: inference on Apple Silicon
+- **Modal**: serverless GPU for fine-tuning
 
-## Technologies Used
-
-- **LFM2.5-VL** (Liquid AI) — Vision-Language Model for on-board decisions
-- **SimSat** (DPhi Space) — Satellite simulator providing real Sentinel-2 + Mapbox data
-- **Sentinel-2** (Copernicus) — 10m multispectral satellite imagery
-- **MLX** (Apple) — Efficient inference on Apple Silicon
-- **Modal** — Serverless GPU cloud for fine-tuning
-- **VRSBench** — Remote sensing visual grounding benchmark (NeurIPS 2024)
-
-## License
-
-MIT
-
----
-
-*Built for [AI in Space Hackathon #05](https://lu.ma/AI_in_Space_5) by Liquid AI x DPhi Space*
+MIT License
